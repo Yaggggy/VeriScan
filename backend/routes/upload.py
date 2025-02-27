@@ -1,47 +1,37 @@
+from flask import Blueprint, request, jsonify
+from flask_cors import cross_origin
 import os
-from flask import Blueprint, request, jsonify, current_app
-from werkzeug.utils import secure_filename
 from backend.extensions import db
 from backend.models.user import User
 from backend.services.ocr_extraction import extract_aadhaar_details
 
 upload_blueprint = Blueprint("upload", __name__)
 
-UPLOAD_FOLDER = "backend/photos"
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
-
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-# ✅ Aadhaar Upload API
 @upload_blueprint.route("/upload", methods=["POST"])
+@cross_origin(origins="http://localhost:3000")
 def upload_file():
-    if "file" not in request.files:
-        return jsonify({"error": "No file part"}), 400
+    try:
+        print("📌 Request received!")  # ✅ Debugging log
 
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
+        if "file" not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
 
-    if file and "." in file.filename and file.filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS:
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"error": "No selected file"}), 400
+
+        filename = file.filename
+        file_path = os.path.join("backend/photos", filename)
         file.save(file_path)
 
-        # ✅ Extract Aadhaar details using OCR
-        aadhaar_data = extract_aadhaar_details(file_path)
+        print(f"✅ File uploaded successfully: {file_path}")  # ✅ Debugging
 
-        # ✅ Store in database
-        new_user = User(
-            name=aadhaar_data["name"],
-            aadhaar_number=aadhaar_data["aadhaar_number"],
-            dob=aadhaar_data["dob"],
-            address=aadhaar_data["address"],
-            photo_path=file_path,
-        )
-        db.session.add(new_user)
-        db.session.commit()
+        # ✅ Perform Aadhaar OCR extraction
+        extracted_data = extract_aadhaar_details(file_path)
+        print(f"✅ Extracted Data: {extracted_data}")  # ✅ Debugging
 
-        return jsonify({"message": "Upload successful!", "data": aadhaar_data}), 200
+        return jsonify({"message": "Upload successful!", "data": extracted_data}), 201
 
-    return jsonify({"error": "Invalid file format"}), 400
+    except Exception as e:
+        print(f"❌ Server Error: {e}")  # ✅ Print exact error in Flask console
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
