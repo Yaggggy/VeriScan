@@ -11,10 +11,7 @@ def get_users():
     user_list = [
         {
             "id": user.id,
-            "name": user.name,
             "aadhaar_number": user.aadhaar_number,
-            "dob": user.dob,
-            "address": user.address,
             "photo_path": user.photo_path,
         }
         for user in users

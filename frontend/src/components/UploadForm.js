@@ -71,19 +71,11 @@ const UploadForm = () => {
       {aadhaarData && (
         <div className="bg-white shadow-lg rounded-lg p-6 mt-6 w-full max-w-md">
           <h3 className="text-xl font-semibold text-gray-800">
-            Extracted Aadhaar Details:
+            Extracted Aadhaar number:
           </h3>
-          <p className="text-gray-700">
-            <strong>Name:</strong> {aadhaarData.name}
-          </p>
+          <p className="text-gray-700"></p>
           <p className="text-gray-700">
             <strong>Aadhaar Number:</strong> {aadhaarData.aadhaar_number}
-          </p>
-          <p className="text-gray-700">
-            <strong>Date of Birth:</strong> {aadhaarData.dob}
-          </p>
-          <p className="text-gray-700">
-            <strong>Address:</strong> {aadhaarData.address}
           </p>
         </div>
       )}

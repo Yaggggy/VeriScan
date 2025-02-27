@@ -1,54 +1,49 @@
 import cv2
 import pytesseract
+import easyocr
 import numpy as np
 import re
 from PIL import Image
 
-# ✅ Set Tesseract path (Ensure it's installed)
+# ✅ Set Tesseract Path (Ensure Tesseract is installed)
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
+# ✅ Initialize EasyOCR Reader
+reader = easyocr.Reader(["en"])  # Supports multiple languages if needed
+
 def preprocess_image(image_path):
-    """Apply grayscale, thresholding, and denoising for better OCR results."""
+    """Enhance image quality for better OCR detection."""
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    
-    # ✅ Apply adaptive thresholding to remove noise
+
+    # ✅ Apply Adaptive Thresholding to remove noise
     image = cv2.adaptiveThreshold(image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
-    
-    # ✅ Denoise the image
+
+    # ✅ Apply Denoising to reduce artifacts
     image = cv2.fastNlMeansDenoising(image, h=30)
 
-    # ✅ Save temporary processed image
+    # ✅ Save the processed image for debugging
     processed_path = "backend/photos/processed_temp.jpg"
     cv2.imwrite(processed_path, image)
 
     return processed_path
 
-def extract_aadhaar_details(image_path):
-    """Extract Aadhaar details using OCR and regex."""
+def extract_text_tesseract(image_path):
+    """Extract raw text from image using Tesseract OCR."""
     processed_image_path = preprocess_image(image_path)
+    text = pytesseract.image_to_string(Image.open(processed_image_path), config="--psm 6")  # ✅ PSM 6 for structured text
+    return text
+
+def extract_aadhaar_number(image_path, use_easyocr=False):
+    """Extract only the Aadhaar number using OCR."""
     
-    # ✅ Run OCR on the preprocessed image
-    text = pytesseract.image_to_string(Image.open(processed_image_path))
+    # ✅ Use EasyOCR if specified, otherwise use Tesseract
+    text = extract_text_tesseract(image_path)
 
-    # ✅ Extract Aadhaar number (12-digit pattern)
-    aadhaar_match = re.search(r"\b\d{4}\s\d{4}\s\d{4}\b", text)
-    aadhaar_number = aadhaar_match.group() if aadhaar_match else "Not Found"
+    # ✅ Debugging: Print extracted text
+    print("📌 Extracted OCR Text:\n", text)
 
-    # ✅ Extract Name (Assume first uppercase word after "Name" or similar keywords)
-    name_match = re.search(r"(?i)(name|नाम)[:\s]*([A-Z][a-z]+\s[A-Z][a-z]+)", text)
-    name = name_match.group(2) if name_match else "Not Found"
+    # ✅ Extract Aadhaar Number (Handles different formats)
+    aadhaar_match = re.search(r"\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b", text)
+    aadhaar_number = aadhaar_match.group().replace(" ", "").replace("-", "") if aadhaar_match else "Not Found"
 
-    # ✅ Extract Date of Birth (Format: DD/MM/YYYY)
-    dob_match = re.search(r"\b\d{2}/\d{2}/\d{4}\b", text)
-    dob = dob_match.group() if dob_match else "Not Found"
-
-    # ✅ Extract Address (Assume after "Address" or similar keywords)
-    address_match = re.search(r"(?i)(address|पता)[:\s]*([\w\s,]+)", text)
-    address = address_match.group(2) if address_match else "Not Found"
-
-    return {
-        "name": name,
-        "aadhaar_number": aadhaar_number,
-        "dob": dob,
-        "address": address
-    }
+    return {"aadhaar_number": aadhaar_number}
