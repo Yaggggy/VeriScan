@@ -1,9 +1,9 @@
 import os
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
-from backend.extensions import db  # ✅ Import from extensions
-from backend.models.user import User    
-from backend.services.ocr_extraction import extract_aadhaar_details  
+from backend.extensions import db
+from backend.models.user import User
+from backend.services.ocr_extraction import extract_aadhaar_details
 
 upload_blueprint = Blueprint("upload", __name__)
 
@@ -13,6 +13,7 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+# ✅ Aadhaar Upload API
 @upload_blueprint.route("/upload", methods=["POST"])
 def upload_file():
     if "file" not in request.files:
@@ -27,21 +28,20 @@ def upload_file():
         file_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
         file.save(file_path)
 
-        # Extract Aadhaar details using OCR
+        # ✅ Extract Aadhaar details using OCR
         aadhaar_data = extract_aadhaar_details(file_path)
 
-        if aadhaar_data:
-            user = User(
-                name=aadhaar_data["name"],
-                aadhaar_number=aadhaar_data["aadhaar_number"],
-                dob=aadhaar_data["dob"],
-                address=aadhaar_data["address"],
-                photo_path=file_path,
-            )
-            db.session.add(user)
-            db.session.commit()
-            return jsonify({"message": "File uploaded & data extracted successfully", "data": aadhaar_data}), 200
-        else:
-            return jsonify({"error": "Failed to extract details"}), 500
+        # ✅ Store in database
+        new_user = User(
+            name=aadhaar_data["name"],
+            aadhaar_number=aadhaar_data["aadhaar_number"],
+            dob=aadhaar_data["dob"],
+            address=aadhaar_data["address"],
+            photo_path=file_path,
+        )
+        db.session.add(new_user)
+        db.session.commit()
+
+        return jsonify({"message": "Upload successful!", "data": aadhaar_data}), 200
 
     return jsonify({"error": "Invalid file format"}), 400
